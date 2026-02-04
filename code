@@ -1,0 +1,67 @@
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var event = data.events[0];
+
+    if (!event || !event.replyToken || !event.message || !event.message.text) {
+      return ContentService.createTextOutput("OK");
+    }
+
+    var token = event.replyToken;
+    var msg = event.message.text.trim().toLowerCase();
+    
+    // Updated image map with Direct Download links
+    var imageMap = {
+      north: "https://drive.google.com/uc?export=download&id=1Hv1CaavzWJICU0zTzANQcRAMWobJX5c4",
+      south: "https://drive.google.com/uc?export=download&id=1WqVtTxQGoxJR6GahtPEZ1hK8KZNGeYOL",
+      east:  "https://drive.google.com/uc?export=download&id=1zkAsHuctdAjiJ3oaGC8yxEFN9wOKGkJ_",
+      west:  "https://drive.google.com/uc?export=download&id=16vFKNQUh6sdppuCYUJbXhdQhrnNttBur"
+    };
+
+    if (imageMap[msg]) {
+      replyImage(token, imageMap[msg]);
+    } else {
+      replyText(token, "Type: North / South / East / West");
+    }
+
+    return ContentService.createTextOutput("OK");
+
+  } catch (err) {
+    console.log("Error: " + err.message);
+    return ContentService.createTextOutput("OK");
+  }
+}
+
+function replyText(token, text) {
+  var url = "https://api.line.me/v2/bot/message/reply";
+  var tokenFull = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
+  
+  UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    headers: { "Authorization": "Bearer " + tokenFull },
+    payload: JSON.stringify({
+      replyToken: token,
+      messages: [{ type: "text", text: text }]
+    })
+  });
+}
+
+function replyImage(token, imageUrl) {
+  var url = "https://api.line.me/v2/bot/message/reply";
+  var tokenFull = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
+
+  UrlFetchApp.fetch(url, {
+    method: "post",
+    contentType: "application/json",
+    headers: { "Authorization": "Bearer " + tokenFull },
+    payload: JSON.stringify({
+      replyToken: token,
+      messages: [{
+        type: "image",
+        originalContentUrl: imageUrl,
+        previewImageUrl: imageUrl // Google Drive direct links work for both
+      }]
+    })
+  });
+}
