@@ -34,7 +34,7 @@ function doPost(e) {
     }
 
     // 4. FINAL STEPS
-    else if (msg === "yes") {
+    else if (msg === "yes" || msg === "2") {
       replyText(token, "Registration complete. Program ended.");
     }
     else if (msg === "no") {
