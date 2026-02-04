@@ -1,67 +1,90 @@
+var CHANNEL_ACCESS_TOKEN = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var event = data.events[0];
-
-    if (!event || !event.replyToken || !event.message || !event.message.text) {
-      return ContentService.createTextOutput("OK");
-    }
+    if (!event || !event.replyToken || !event.message) return;
 
     var token = event.replyToken;
     var msg = event.message.text.trim().toLowerCase();
-    
-    // Updated image map with Direct Download links
-    var imageMap = {
-      north: "https://drive.google.com/uc?export=download&id=1Hv1CaavzWJICU0zTzANQcRAMWobJX5c4",
-      south: "https://drive.google.com/uc?export=download&id=1WqVtTxQGoxJR6GahtPEZ1hK8KZNGeYOL",
-      east:  "https://drive.google.com/uc?export=download&id=1zkAsHuctdAjiJ3oaGC8yxEFN9wOKGkJ_",
-      west:  "https://drive.google.com/uc?export=download&id=16vFKNQUh6sdppuCYUJbXhdQhrnNttBur"
-    };
 
-    if (imageMap[msg]) {
-      replyImage(token, imageMap[msg]);
-    } else {
-      replyText(token, "Type: North / South / East / West");
+    // 1. MAIN MENU
+    if (msg === "start") {
+      replyText(token, "Welcome\n1. Check timetable\n2. Register public transport");
+    } 
+    
+    // 2. CHOOSE DIRECTION (Triggered by typing "1")
+    else if (msg === "1" || msg === "check timetable") {
+      replyText(token, "Choose direction:\nNorth\nSouth\nEast\nWest");
     }
 
-    return ContentService.createTextOutput("OK");
+    // 3. SHOW SCHEDULE (Triggered by a direction)
+    else if (msg === "north" || msg === "south" || msg === "east" || msg === "west") {
+      var imageMap = {
+        // sometimes reply sometimes not reply
+        north: "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/Noth.jpg",
+        south: "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/South.jpg",
+        east:  "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/East.jpg", 
+        west:  "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/West.jpg"
+      };
+      
+      // We send TWO messages here: the Image AND the follow-up question
+      replyImageAndText(token, imageMap[msg], "Do you want to register it or not?\n(Yes/No)");
+    }
+
+    // 4. FINAL STEPS
+    else if (msg === "yes") {
+      replyText(token, "Registration complete. Program ended.");
+    }
+    else if (msg === "no") {
+      replyText(token, "Thankyou for using our service.");
+    }
+
+    // FALLBACK
+    else {
+      replyText(token, "Invalid Input\nTYPE START");
+    }
 
   } catch (err) {
-    console.log("Error: " + err.message);
-    return ContentService.createTextOutput("OK");
+    console.log(err.toString());
   }
 }
 
-function replyText(token, text) {
+// HELPER FUNCTION: Sends an image followed by a text message
+function replyImageAndText(token, imageUrl, text) {
   var url = "https://api.line.me/v2/bot/message/reply";
-  var tokenFull = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
-  
   UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
-    headers: { "Authorization": "Bearer " + tokenFull },
+    headers: { "Authorization": "Bearer OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=" },
     payload: JSON.stringify({
       replyToken: token,
-      messages: [{ type: "text", text: text }]
+      messages: [
+        {
+          type: "image",
+          originalContentUrl: imageUrl,
+          previewImageUrl: imageUrl
+        },
+        {
+          type: "text",
+          text: text
+        }
+      ]
     })
   });
 }
 
-function replyImage(token, imageUrl) {
+// Standard replyText function
+function replyText(token, text) {
   var url = "https://api.line.me/v2/bot/message/reply";
-  var tokenFull = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
-
   UrlFetchApp.fetch(url, {
     method: "post",
     contentType: "application/json",
-    headers: { "Authorization": "Bearer " + tokenFull },
+    headers: { "Authorization": "Bearer OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=" },
     payload: JSON.stringify({
       replyToken: token,
-      messages: [{
-        type: "image",
-        originalContentUrl: imageUrl,
-        previewImageUrl: imageUrl // Google Drive direct links work for both
-      }]
+      messages: [{ type: "text", text: text }]
     })
   });
 }
