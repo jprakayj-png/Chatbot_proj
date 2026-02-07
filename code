@@ -1,5 +1,6 @@
 var CHANNEL_ACCESS_TOKEN = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
-
+//var ss = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1kjrdinuIxARIj6_leoZIeZ8XpNht7YaDnNXSW93sm-8/edit?gid=0#gid=0") ;
+//var sheet = ss.getSheetByName("Table") ;
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -32,9 +33,27 @@ function doPost(e) {
       // We send TWO messages here: the Image AND the follow-up question
       replyImageAndText(token, imageMap[msg], "Do you want to register it or not?\n(Yes/No)");
     }
-
+    else if (msg === "2"){
+      replyText(token, "Choose route travel:\n" + 
+      "n : North\n" +
+      "s : South\n" +
+      "e : East\n" +
+      "w : West\n");
+    }
+    else if (msg === "n"){
+      replyText(token, "Choose type of bus");
+    }
+    else if (msg === "s"){
+      replyText(token, "Choose type of bus");
+    }
+    else if (msg === "e"){
+      replyText(token, "Choose type of bus");
+    }
+    else if (msg === "w"){
+      replyText(token, "Choose type of bus");
+    }
     // 4. FINAL STEPS
-    else if (msg === "yes" || msg === "2") {
+    else if (msg === "yes") {
       replyText(token, "Registration complete. Program ended.");
     }
     else if (msg === "no") {
