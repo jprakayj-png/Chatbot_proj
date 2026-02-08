@@ -1,106 +1,168 @@
-var CHANNEL_ACCESS_TOKEN = "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
-//var ss = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1kjrdinuIxARIj6_leoZIeZ8XpNht7YaDnNXSW93sm-8/edit?gid=0#gid=0") ;
-//var sheet = ss.getSheetByName("Table") ;
+var CHANNEL_ACCESS_TOKEN =
+  "OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=";
+
+var SPREADSHEET_ID = "1kjrdinuIxARIj6_leoZIeZ8XpNht7YaDnNXSW93sm-8";
+var SHEET_NAME = "Table";
+
+/* ================= ENTRY ================= */
+
 function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var event = data.events[0];
-    if (!event || !event.replyToken || !event.message) return;
+  var data = JSON.parse(e.postData.contents);
+  var event = data.events[0];
+  if (!event.message || event.message.type !== "text") return;
 
-    var token = event.replyToken;
-    var msg = event.message.text.trim().toLowerCase();
+  var replyToken = event.replyToken;
+  var userMsg = event.message.text.trim();
+  var msg = userMsg.toLowerCase();
 
-    // 1. MAIN MENU
-    if (msg === "start") {
-      replyText(token, "Welcome\n1. Check timetable\n2. Register public transport");
-    } 
-    
-    // 2. CHOOSE DIRECTION (Triggered by typing "1")
-    else if (msg === "1" || msg === "check timetable") {
-      replyText(token, "Choose direction:\nNorth\nSouth\nEast\nWest");
-    }
+  var cache = CacheService.getUserCache();
+  var state = cache.get("state") || "";
 
-    // 3. SHOW SCHEDULE (Triggered by a direction)
-    else if (msg === "north" || msg === "south" || msg === "east" || msg === "west") {
-      var imageMap = {
-        // sometimes reply sometimes not reply
-        north: "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/Noth.jpg",
-        south: "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/South.jpg",
-        east:  "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/East.jpg", 
-        west:  "https://raw.githubusercontent.com/jprakayj-png/Chatbot_proj/refs/heads/main/West.jpg"
-      };
-      
-      // We send TWO messages here: the Image AND the follow-up question
-      replyImageAndText(token, imageMap[msg], "Do you want to register it or not?\n(Yes/No)");
-    }
-    else if (msg === "2"){
-      replyText(token, "Choose route travel:\n" + 
-      "n : North\n" +
-      "s : South\n" +
-      "e : East\n" +
-      "w : West\n");
-    }
-    else if (msg === "n"){
-      replyText(token, "Choose type of bus");
-    }
-    else if (msg === "s"){
-      replyText(token, "Choose type of bus");
-    }
-    else if (msg === "e"){
-      replyText(token, "Choose type of bus");
-    }
-    else if (msg === "w"){
-      replyText(token, "Choose type of bus");
-    }
-    // 4. FINAL STEPS
-    else if (msg === "yes") {
-      replyText(token, "Registration complete. Program ended.");
-    }
-    else if (msg === "no") {
-      replyText(token, "Thankyou for using our service.");
-    }
-
-    // FALLBACK
-    else {
-      replyText(token, "Invalid Input\nTYPE START");
-    }
-
-  } catch (err) {
-    console.log(err.toString());
+  /* ===== START ===== */
+  if (msg === "start") {
+    cache.removeAll(["state","direction","car","options"]);
+    cache.put("state", "MENU", 300);
+    reply(replyToken,
+      "Welcome 🚍\n" +
+      "1️⃣ Check timetable\n" +
+      "2️⃣ Register public transport"
+    );
+    return;
   }
+
+  /* ===== MAIN MENU (ONLY HERE) ===== */
+  if (state === "MENU") {
+    if (msg === "1") {
+      reply(replyToken, "📋 Timetable feature not implemented yet.");
+      return;
+    }
+
+    if (msg === "2") {
+      cache.put("state", "REG_DIRECTION", 300);
+      reply(replyToken, "Choose direction:\nNorth / South / East / West");
+      return;
+    }
+
+    reply(replyToken, "❌ Please type 1 or 2.");
+    return;
+  }
+
+  /* ===== STEP 1: DIRECTION ===== */
+  if (state === "REG_DIRECTION") {
+    cache.put("direction", userMsg, 300);
+    cache.put("state", "REG_CAR", 300);
+    reply(replyToken, "Choose car type:\nbus / minibus / van");
+    return;
+  }
+
+  /* ===== STEP 2: CAR TYPE ===== */
+  if (state === "REG_CAR") {
+    cache.put("car", userMsg, 300);
+
+    var list = listAvailableTimes(
+      cache.get("direction"),
+      userMsg
+    );
+
+    if (!list.text) {
+      reply(replyToken, "❌ No available transport.");
+      cache.removeAll(["state","direction","car"]);
+      return;
+    }
+
+    cache.put("options", JSON.stringify(list.rows), 300);
+    cache.put("state", "REG_TIME", 300);
+
+    reply(replyToken, list.text + "\n\nType the number to register.");
+    return;
+  }
+
+  /* ===== STEP 3: TIME SELECTION ===== */
+  if (state === "REG_TIME") {
+    var index = parseInt(msg);
+    if (isNaN(index)) {
+      reply(replyToken, "❌ Please type a number.");
+      return;
+    }
+
+    var options = JSON.parse(cache.get("options"));
+    var rowIndex = options[index - 1];
+
+    if (!rowIndex) {
+      reply(replyToken, "❌ Invalid number.");
+      return;
+    }
+
+    var result = registerSeatByRow(rowIndex);
+    reply(replyToken, result);
+
+    cache.removeAll(["state","direction","car","options"]);
+    return;
+  }
+
+  reply(replyToken, 'Type "start" to begin.');
 }
 
-// HELPER FUNCTION: Sends an image followed by a text message
-function replyImageAndText(token, imageUrl, text) {
-  var url = "https://api.line.me/v2/bot/message/reply";
-  UrlFetchApp.fetch(url, {
-    method: "post",
-    contentType: "application/json",
-    headers: { "Authorization": "Bearer OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=" },
-    payload: JSON.stringify({
-      replyToken: token,
-      messages: [
-        {
-          type: "image",
-          originalContentUrl: imageUrl,
-          previewImageUrl: imageUrl
-        },
-        {
-          type: "text",
-          text: text
-        }
-      ]
-    })
-  });
+/* ================= LOGIC ================= */
+
+function listAvailableTimes(direction, car) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
+  var data = sheet.getDataRange().getValues();
+
+  var text = "📍 " + direction + " | 🚍 " + car + "\n\n";
+  var rows = [];
+  var count = 1;
+
+  for (var i = 1; i < data.length; i++) {
+    if (
+      data[i][0].toString().toLowerCase() === direction.toLowerCase() &&
+      data[i][1].toString().toLowerCase() === car.toLowerCase() &&
+      Number(data[i][4]) > 0
+    ) {
+      rows.push(i + 1);
+      text +=
+        count + ". 🕒 " + data[i][2] +
+        " | 💺 " + data[i][4] +
+        " | 💰 " + data[i][5] + "\n";
+      count++;
+    }
+  }
+
+  if (rows.length === 0) return { text:"", rows:[] };
+  return { text:text, rows:rows };
 }
 
-// Standard replyText function
-function replyText(token, text) {
-  var url = "https://api.line.me/v2/bot/message/reply";
-  UrlFetchApp.fetch(url, {
+function registerSeatByRow(row) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
+  var seatsCell = sheet.getRange(row, 5);
+  var seats = Number(seatsCell.getValue());
+
+  if (seats <= 0) {
+    return "❌ Sorry, this slot is full.";
+  }
+
+  seatsCell.setValue(seats - 1);
+
+  var data = sheet.getRange(row, 1, 1, 6).getValues()[0];
+  return (
+    "✅ Registration successful!\n\n" +
+    "📍 " + data[0] +
+    "\n🚍 " + data[1] +
+    "\n🕒 " + data[2] +
+    "\n💺 Remaining: " + (seats - 1) +
+    "\n💰 Price: " + data[5]
+  );
+}
+
+/* ================= LINE ================= */
+
+function reply(token, text) {
+  UrlFetchApp.fetch("https://api.line.me/v2/bot/message/reply", {
     method: "post",
     contentType: "application/json",
-    headers: { "Authorization": "Bearer OxJMnf0ZgAEhP5PVyOVAClCoDo9/pBnkHM+Vc2cAwdzda6+W2ov/M75/FK5a4T8qbA1oQd81sPpNsWxKIm8Xh55J6wvdBuFk6wgruwlfx6NRnmGpq7yy/oH6LUt9j7SKi+wxTYR02iEfT7dQL0GTJgdB04t89/1O/w1cDnyilFU=" },
+    headers: {
+      Authorization: "Bearer " + CHANNEL_ACCESS_TOKEN
+    },
     payload: JSON.stringify({
       replyToken: token,
       messages: [{ type: "text", text: text }]
